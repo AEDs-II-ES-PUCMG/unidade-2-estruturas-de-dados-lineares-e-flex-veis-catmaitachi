@@ -220,28 +220,52 @@ public class App {
     
 	public static void main(String[] args) {
 		
-		teclado = new Scanner(System.in, Charset.forName("UTF-8"));
+		// teclado = new Scanner(System.in, Charset.forName("UTF-8"));
         
-		nomeArquivoDados = "produtos.txt";
-        produtosCadastrados = lerProdutos(nomeArquivoDados);
+		// nomeArquivoDados = "produtos.txt";
+        // produtosCadastrados = lerProdutos(nomeArquivoDados);
         
-        Pedido pedido = null;
+        // Pedido pedido = null;
         
-        int opcao = -1;
+        // int opcao = -1;
       
-        do{
-            opcao = menu();
-            switch (opcao) {
-                case 1 -> listarTodosOsProdutos();
-                case 2 -> mostrarProduto(localizarProduto());
-                case 3 -> mostrarProduto(localizarProdutoDescricao());
-                case 4 -> pedido = iniciarPedido();
-                case 5 -> finalizarPedido(pedido);
-                case 6 -> listarProdutosPedidosRecentes();
-            }
-            pausa();
-        }while(opcao != 0);       
+        // do{
+        //     opcao = menu();
+        //     switch (opcao) {
+        //         case 1 -> listarTodosOsProdutos();
+        //         case 2 -> mostrarProduto(localizarProduto());
+        //         case 3 -> mostrarProduto(localizarProdutoDescricao());
+        //         case 4 -> pedido = iniciarPedido();
+        //         case 5 -> finalizarPedido(pedido);
+        //         case 6 -> listarProdutosPedidosRecentes();
+        //     }
+        //     pausa();
+        // }while(opcao != 0);       
 
-        teclado.close();    
+        // teclado.close();
+
+        String matricula = "890105";
+
+        Pilha<Integer> pilha = new Pilha<>();
+
+        for ( int i = matricula.length() - 1; i >= 0; i-- ) {
+
+            boolean repetido = false;
+
+            for ( int j = 0; j < i; j++ ) {
+
+                if ( matricula.charAt(j) == matricula.charAt(i) ) {
+                    repetido = true;
+                    break;
+                }
+
+            }
+
+            if ( !repetido ) pilha.empilhar(Character.getNumericValue(matricula.charAt(i)));
+
+        }
+
+        while ( !pilha.vazia() ) System.out.print(pilha.desempilhar());
+
     }
 }
