@@ -21,6 +21,9 @@ public class App {
 
     /** Pilha de pedidos */
     static Pilha<Pedido> pilhaPedidos = new Pilha<>();
+
+    /** Pilha de produtos dos pedidos mais recentes */
+    static Pilha<Produto> pilhaProdutosPedidosRecentes = new Pilha<>();
         
     static void limparTela() {
         System.out.print("\033[H\033[2J");
@@ -210,62 +213,60 @@ public class App {
      */
     public static void finalizarPedido(Pedido pedido) {
     	
-    	// TODO
+    	if ( pedido == null ) {
+            
+            System.out.println("Nenhum pedido iniciado. Inicie um pedido antes de finalizá-lo."); 
+            return;
+        
+        }
+
+        pilhaPedidos.empilhar(pedido);
+        
+        for ( ItemDePedido item : pedido.getItensDoPedido() ) if ( item != null) pilhaProdutosPedidosRecentes.empilhar(item.getProduto());
+
+        System.out.println("Pedido finalizado e armazenado com sucesso!");
+
     }
     
     public static void listarProdutosPedidosRecentes() {
     	
-    	// TODO
+        if ( pilhaProdutosPedidosRecentes.vazia() ) {
+            
+            System.out.println("Nenhum produto de pedidos recentes para listar.");
+            return;
+        
+        }
+
+        System.out.println("Produtos dos pedidos mais recentes:");
+        pilhaProdutosPedidosRecentes.imprimir();
+
     }
     
 	public static void main(String[] args) {
 		
-		// teclado = new Scanner(System.in, Charset.forName("UTF-8"));
+		teclado = new Scanner(System.in, Charset.forName("UTF-8"));
         
-		// nomeArquivoDados = "produtos.txt";
-        // produtosCadastrados = lerProdutos(nomeArquivoDados);
+		nomeArquivoDados = "produtos.txt";
+        produtosCadastrados = lerProdutos(nomeArquivoDados);
         
-        // Pedido pedido = null;
+        Pedido pedido = null;
         
-        // int opcao = -1;
+        int opcao = -1;
       
-        // do{
-        //     opcao = menu();
-        //     switch (opcao) {
-        //         case 1 -> listarTodosOsProdutos();
-        //         case 2 -> mostrarProduto(localizarProduto());
-        //         case 3 -> mostrarProduto(localizarProdutoDescricao());
-        //         case 4 -> pedido = iniciarPedido();
-        //         case 5 -> finalizarPedido(pedido);
-        //         case 6 -> listarProdutosPedidosRecentes();
-        //     }
-        //     pausa();
-        // }while(opcao != 0);       
-
-        // teclado.close();
-
-        String matricula = "890105";
-
-        Pilha<Integer> pilha = new Pilha<>();
-
-        for ( int i = matricula.length() - 1; i >= 0; i-- ) {
-
-            boolean repetido = false;
-
-            for ( int j = 0; j < i; j++ ) {
-
-                if ( matricula.charAt(j) == matricula.charAt(i) ) {
-                    repetido = true;
-                    break;
-                }
-
+        do{
+            opcao = menu();
+            switch (opcao) {
+                case 1 -> listarTodosOsProdutos();
+                case 2 -> mostrarProduto(localizarProduto());
+                case 3 -> mostrarProduto(localizarProdutoDescricao());
+                case 4 -> pedido = iniciarPedido();
+                case 5 -> { finalizarPedido(pedido); pedido = null; }
+                case 6 -> listarProdutosPedidosRecentes();
             }
+            pausa();
+        }while(opcao != 0);       
 
-            if ( !repetido ) pilha.empilhar(Character.getNumericValue(matricula.charAt(i)));
-
-        }
-
-        while ( !pilha.vazia() ) System.out.print(pilha.desempilhar());
+        teclado.close();
 
     }
 }

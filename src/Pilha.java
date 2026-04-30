@@ -40,6 +40,16 @@ public class Pilha<E> {
 
 	}
 
+	public void imprimir() {
+
+		Celula<E> atual = topo;
+		while (atual != fundo) {
+			System.out.println(atual.getItem());
+			atual = atual.getProximo();
+		}
+
+	}
+
 	/**
 	 * Cria e devolve uma nova pilha contendo os primeiros numItens elementos
 	 * do topo da pilha atual.
@@ -54,7 +64,30 @@ public class Pilha<E> {
 	 */
 	public Pilha<E> subPilha(int numItens) {
 		
-		// TODO
-		return null;
+		if ( this.vazia() ) return null;
+
+		if ( numItens < 0 ) throw new IllegalArgumentException("O número de itens deve ser não-negativo.");
+
+		return percorrer(topo, 1, numItens);
+	
 	}
+	
+	private Pilha<E> percorrer(Celula<E> celulaAtual, int numAtual, int numAlvo ) {
+
+		Pilha<E> aux;
+
+		if ( numAtual == numAlvo || celulaAtual == fundo ) {
+
+			aux = new Pilha<>();
+			aux.empilhar(celulaAtual.getItem());
+			return aux;
+
+		}
+		
+		aux = percorrer(celulaAtual.getProximo(), numAtual + 1, numAlvo);
+		aux.empilhar(celulaAtual.getItem());
+		return aux;
+
+	}
+
 }
