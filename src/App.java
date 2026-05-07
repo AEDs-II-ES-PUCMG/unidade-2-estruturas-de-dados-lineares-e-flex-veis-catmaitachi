@@ -1,5 +1,10 @@
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
 import java.io.File;
 import java.io.IOException;
@@ -9,7 +14,10 @@ public class App {
 
 	/** Nome do arquivo de dados. O arquivo deve estar localizado na raiz do projeto */
     static String nomeArquivoDados;
-    
+
+   /** Nome do arquivo de pedidos */ 
+    static String nomeArquivoPedidos;
+
     /** Scanner para leitura de dados do teclado */
     static Scanner teclado;
 
@@ -24,7 +32,10 @@ public class App {
 
     /** Pilha de produtos dos pedidos mais recentes */
     static Pilha<Produto> pilhaProdutosPedidosRecentes = new Pilha<>();
-        
+
+    /** Fila de pedidos */
+    static Fila<Pedido> filaPedidos = new Fila<>();
+
     static void limparTela() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
@@ -67,9 +78,50 @@ public class App {
         System.out.println("4 - Iniciar novo pedido");
         System.out.println("5 - Fechar pedido");
         System.out.println("6 - Listar produtos dos pedidos mais recentes");
+        System.out.println("7 - Listar pedidos registrados");
         System.out.println("0 - Sair");
         System.out.print("Digite sua opção: ");
         return Integer.parseInt(teclado.nextLine());
+    }
+
+    static void salvarPedido(Pedido pedido) {
+
+        if (pedido == null) {
+            
+            System.out.println("Nenhum pedido para salvar.");
+            return;
+        }
+
+        StringBuilder linha = new StringBuilder();
+
+        int id = pedido.hashCode();
+        DateTimeFormatter formatoData = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        String data = formatoData.format(pedido.getDataPedido());
+        int forma = pedido.getFormaDePagamento();
+
+        linha.append(id).append(";").append(data).append(";").append(forma);
+
+        ItemDePedido[] itens = pedido.getItensDoPedido();
+        int contItens = 0;
+        for (ItemDePedido it : itens) if (it != null) contItens++;
+
+        linha.append(";").append(contItens);
+
+        for (ItemDePedido it : itens) {
+            if (it == null) continue;
+            int prodId = it.getProduto().hashCode();
+            int qtd = it.getQuantidade();
+            String preco = String.format("%.2f", it.getPrecoVenda()).replace('.', ',');
+            linha.append(";").append(prodId).append(",").append(qtd).append(",").append(preco);
+        }
+
+        linha.append(System.lineSeparator());
+
+        try {
+            Path path = Paths.get(nomeArquivoPedidos);
+            Files.write(path, linha.toString().getBytes(Charset.forName("UTF-8")), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException e) { System.out.println("Erro ao salvar pedido: " + e.getMessage()); }
+
     }
     
     /**
@@ -89,6 +141,7 @@ public class App {
     	Produto[] produtosCadastrados;
     	
     	try {
+
     		arquivo = new Scanner(new File(nomeArquivoDados), Charset.forName("UTF-8"));
     		
     		numProdutos = Integer.parseInt(arquivo.nextLine());
@@ -99,15 +152,85 @@ public class App {
     			produto = Produto.criarDoTexto(linha);
     			produtosCadastrados[i] = produto;
     		}
+
     		quantosProdutos = numProdutos;
     		
-    	} catch (IOException excecaoArquivo) {
-    		produtosCadastrados = null;
-    	} finally {
-    		arquivo.close();
-    	}
-    	
+    	} catch (IOException excecaoArquivo) { produtosCadastrados = null;
+    	} finally { if (arquivo != null) arquivo.close(); }
+
     	return produtosCadastrados;
+    }
+    
+    /**
+     * Lê os pedidos salvos de um arquivo-texto e carrega na pilha de pedidos.
+     * Arquivo-texto no formato (uma linha por pedido):
+     * idPedido;dd/MM/yyyy;formaPagamento;numItens;prodID,qtd,preço;prodID,qtd,preço;...
+     * @param nomeArquivoPedidos Nome do arquivo de pedidos a ser aberto.
+     */
+    static void lerPedidos(String nomeArquivoPedidos) {
+        
+        Scanner arquivo = null;
+        String linha;
+        
+        try {
+            arquivo = new Scanner(new File(nomeArquivoPedidos), Charset.forName("UTF-8"));
+            
+            DateTimeFormatter formatoData = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            
+            while (arquivo.hasNextLine()) {
+                linha = arquivo.nextLine();
+                String[] partes = linha.split(";");
+                
+                try {
+                    LocalDate dataPedido = LocalDate.parse(partes[1], formatoData);
+                    int formaPagamento = Integer.parseInt(partes[2]);
+                    int numItens = Integer.parseInt(partes[3]);
+                    
+                    Pedido pedido = new Pedido(dataPedido, formaPagamento);
+                    
+                    for (int i = 0; i < numItens; i++) {
+                        String[] itemPartes = partes[4 + i].split(",");
+                        int prodID = Integer.parseInt(itemPartes[0]);
+                        int qtd = Integer.parseInt(itemPartes[1]);
+                        double preco = Double.parseDouble(itemPartes[2].replace(",", "."));
+                        
+                        Produto prod = localizarProdutoPorID(prodID);
+                        if (prod != null) {
+                            ItemDePedido item = new ItemDePedido(prod, qtd, preco);
+                            pedido.adicionarItemReconstruido(item);
+                        }
+                    }
+                    
+                    pilhaPedidos.empilhar(pedido);
+                    filaPedidos.enfileirar(pedido);
+                    
+                    for (ItemDePedido item : pedido.getItensDoPedido()) if (item != null) pilhaProdutosPedidosRecentes.empilhar(item.getProduto());
+                    
+                    
+                } catch (Exception e) { System.out.println("Erro ao processar linha do pedido: " + linha); }
+
+            }
+            
+        } catch (IOException excecaoArquivo) {} finally { if (arquivo != null) arquivo.close(); }
+
+    }
+    
+    /** Localiza um produto no vetor de produtos cadastrados, a partir do código identificador. 
+     *  Em caso de não encontrar o produto, retorna null 
+     */
+    static Produto localizarProdutoPorID(int idProduto) {
+        
+    	Produto produto = null;
+    	Boolean localizado = false;
+    	
+        for (int i = 0; (i < quantosProdutos && !localizado); i++) {
+        	if (produtosCadastrados[i].hashCode() == idProduto) {
+        		produto = produtosCadastrados[i];
+        		localizado = true;
+        	}
+        }
+        
+        return produto;   
     }
     
     /** Localiza um produto no vetor de produtos cadastrados, a partir do código de produto informado pelo usuário, e o retorna. 
@@ -220,7 +343,10 @@ public class App {
         
         }
 
+        salvarPedido(pedido);
+
         pilhaPedidos.empilhar(pedido);
+        filaPedidos.enfileirar(pedido);
         
         for ( ItemDePedido item : pedido.getItensDoPedido() ) if ( item != null) pilhaProdutosPedidosRecentes.empilhar(item.getProduto());
 
@@ -241,6 +367,20 @@ public class App {
         pilhaProdutosPedidosRecentes.imprimir();
 
     }
+
+    public static void listarPedidos() {
+
+        if ( pilhaPedidos.vazia() ) {
+            
+            System.out.println("Nenhum pedido registrado para listar.");
+            return;
+        
+        }
+
+        System.out.println("Pedidos registrados:");
+        pilhaPedidos.imprimir();
+
+    }
     
 	public static void main(String[] args) {
 		
@@ -248,6 +388,9 @@ public class App {
         
 		nomeArquivoDados = "produtos.txt";
         produtosCadastrados = lerProdutos(nomeArquivoDados);
+
+        nomeArquivoPedidos = "pedidos.txt";
+        lerPedidos(nomeArquivoPedidos);
         
         Pedido pedido = null;
         
@@ -262,6 +405,7 @@ public class App {
                 case 4 -> pedido = iniciarPedido();
                 case 5 -> { finalizarPedido(pedido); pedido = null; }
                 case 6 -> listarProdutosPedidosRecentes();
+                case 7 -> listarPedidos();
             }
             pausa();
         }while(opcao != 0);       

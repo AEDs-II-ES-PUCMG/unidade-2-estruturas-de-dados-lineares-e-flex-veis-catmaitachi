@@ -43,6 +43,23 @@ public class Pedido implements Comparable<Pedido> {
 	public ItemDePedido[] getItensDoPedido() {
 		return itensDePedido;
 	}
+
+	/** Retorna a data do pedido */
+	public LocalDate getDataPedido() {
+		return dataPedido;
+	}
+
+	/** Retorna a forma de pagamento do pedido (1=à vista, 2=parcelado) */
+	public int getFormaDePagamento() {
+		return formaDePagamento;
+	}
+
+	/** Adiciona um item de pedido já reconstruído (com preço original) - usado ao carregar pedidos do arquivo */
+	public void adicionarItemReconstruido(ItemDePedido item) {
+		if (quantItensDePedido < MAX_ITENS_DE_PEDIDO) {
+			itensDePedido[quantItensDePedido++] = item;
+		}
+	}
 	
 	public ItemDePedido existeNoPedido(Produto produto) {
 		
